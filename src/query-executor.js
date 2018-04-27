@@ -50,7 +50,7 @@ module.exports = {
             })
         }
         return new Promise((resolve, reject) => {
-            if (query.type == 'DIRECT') {
+            if (query.aggregationType == 'DIRECT') {
                 connectAndExecute(r => resolve(r))
             }else{
                 connectAndExecute(r => {

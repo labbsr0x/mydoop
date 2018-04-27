@@ -36,11 +36,11 @@ describe('querySplitter', () => {
             assert.equal(result[2].sql, `select distinct table_mock_alias.column_7 from table_mock as table_mock_alias where table_mock_alias.time_column_1 >= '2018-04-26 11:00:00' and table_mock_alias.time_column_1 <= '2018-04-26 23:40:00' and table_mock_alias.column_7 in ('44')`)
         })
         it('should return 1 DIRECT query extracted', () => {
-            assert.equal(result[0].type, 'DIRECT')
+            assert.equal(result[0].aggregationType, 'DIRECT')
         })
         it('should return 2 COUNT queries extracted', () => {
-            assert.equal(result[1].type, 'COUNT')
-            assert.equal(result[2].type, 'COUNT')
+            assert.equal(result[1].aggregationType, 'COUNT')
+            assert.equal(result[2].aggregationType, 'COUNT')
         })
         
     });

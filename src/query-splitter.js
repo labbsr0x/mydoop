@@ -15,7 +15,7 @@ module.exports = {
         const originalQuerySecondPart = `from ${query.split('from')[1]}`        
         debug('originalQuerySecondPart:: ', originalQuerySecondPart)
         
-        let newQueries = [ {sql: "select ", type: "DIRECT"} ]
+        let newQueries = [{ sql: "select ", aggregationType: "DIRECT", distinct: false} ]
         
         projectionTerms.forEach(t => {
             if (t.distinct && t.aggregationType != 'NONE') { //if the term has to consider DISTINCT values in aggregation, it should be made on a separated query
@@ -24,7 +24,7 @@ module.exports = {
                 debug('derivedQuery', derivedQuery)
                 newQueries.push({
                     sql: derivedQuery,
-                    type: t.aggregationType.toUpperCase()
+                    ...t
                 })
                 
             }else if (t.distinct && t.aggregationType == 'NONE') {
