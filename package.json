@@ -1,0 +1,36 @@
+{
+  "name": "mydoop",
+  "version": "1.0.0",
+  "description": "A middleware to run MySQL queries in a distributed way (inpired by hadoop) transparently to the client application",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "mocha test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/labbsr0x/mydoop.git"
+  },
+  "keywords": [
+    "labbs",
+    "mysql",
+    "big",
+    "data",
+    "distributed"
+  ],
+  "author": "Tiago de Oliveira Stutz",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/labbsr0x/mydoop/issues"
+  },
+  "homepage": "https://github.com/labbsr0x/mydoop#readme",
+  "dependencies": {
+    "async": "^2.6.0",
+    "debug": "^3.1.0",
+    "mocha": "^5.1.1",
+    "moment": "^2.22.1",
+    "mysql": "^2.15.0"
+  }
+}

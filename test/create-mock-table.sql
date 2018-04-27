@@ -1,0 +1,1 @@
+create table table_mock(time_column_1 timestamp,column_1 varchar(200), column_2 varchar(200), column_3 bigint, column_4 bigint, column_5 bigint, column_6 bigint, column_7 bigint)
