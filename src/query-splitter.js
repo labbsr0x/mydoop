@@ -22,10 +22,7 @@ module.exports = {
                 let secondPartWithoutGroupBy = originalQuerySecondPart.split('group')[0]
                 const derivedQuery = parseUtils.normalizeQuery(`select ${t.term.replace(/[()]/g, '')} ${secondPartWithoutGroupBy}`.replace(t.aggregationType.toLowerCase(), ''))
                 debug('derivedQuery', derivedQuery)
-                newQueries.push({
-                    sql: derivedQuery,
-                    ...t
-                })
+                newQueries.push( Object.assign({},t, { sql: derivedQuery }) )
                 
             }else if (t.distinct && t.aggregationType == 'NONE') {
                 throw new Error(`"DISTINCT" is only supported in aggregation functions, e.g.: select count(distinct column).`)
