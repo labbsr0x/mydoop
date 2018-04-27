@@ -1,7 +1,12 @@
+#------
+#-- MYSQL_DATABASE=mydoop MYSQL_USER=mydoop MYSQL_PASSWORD=mydoop MYSQL_HOST=127.0.0.1 MYSQL_PORT=3309 DEBUG=* mocha
+#----    
+
 version: '3.5'
 
 services:
 
+  
   mysql:
     image: mysql:5.7
     restart: always

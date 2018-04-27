@@ -18,7 +18,7 @@ describe('queryParser', () => {
                         TABLE_MOCK AS TABLE_MOCK_alias
                         WHERE
                         TABLE_MOCK_alias.time_column_1 >= ''2018-04-26 11:00:00''
-                        AND TABLE_MOCK_alias.time_column_1 <= '2018-04-26 11:10:00'
+                        AND TABLE_MOCK_alias.time_column_1 <= '2018-04-26 23:40:00'
                         AND TABLE_MOCK_alias.column_7 IN ('44') 
                         GROUP BY TABLE_MOCK_alias.column_1, TABLE_MOCK_alias.column_2
                     `

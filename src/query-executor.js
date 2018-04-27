@@ -31,26 +31,31 @@ module.exports = {
             database: mysqlDatabase
         });
 
+        const connectAndExecute = (cb) => {
+            connection.connect((err, args) => {
+                if (err) {
+                    console.error(err)
+                    reject(error)
+                    throw err
+                }
+                connection.query(query.sql, function (error, results, fields) {
+                    if (error) {
+                        console.error(error);
+                        reject(error)
+                        throw error;
+                    }
+                    log('results: ', results);
+                    cb(results)
+                });
+            })
+        }
         return new Promise((resolve, reject) => {
             if (query.type == 'DIRECT') {
-                connection.connect((err, args) => {
-                    if (err) {
-                        console.error(err)
-                        reject(error)
-                        throw err
-                    }
-                    connection.query(query.sql, function (error, results, fields) {
-                        if (error) {
-                            console.error(error);
-                            reject(error)
-                            throw error;
-                        }
-                        log('The solution is: ', results);
-                        resolve(results)
-                    });
-                })    
+                connectAndExecute(r => resolve(r))
             }else{
-
+                connectAndExecute(r => {
+                    resolve(r)
+                })
             }
         })
 
