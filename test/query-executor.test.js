@@ -38,7 +38,7 @@ describe('queryExecutor', () => {
             const finalQuery = queryExecutor.mergeSQLWithParams(targetQuery, resultSetMock)
             assert.equal(finalQuery, `select distinct table_mock_alias.column_3 as "3" from table_mock as table_mock_alias where table_mock_alias.time_column_1 >= '2018-04-26 11:00:00' and table_mock_alias.time_column_1 <= '2018-04-26 23:40:00' and table_mock_alias.column_7 in ('44') and table_mock_alias.column_1='COL--1' and table_mock_alias.column_2='COL--2'`)            
         })
-    });
+    })
     describe('#execute()', () => {
         it('should execute a NONE query and return a resultset as array', async () => {
             const query = {
@@ -75,6 +75,12 @@ describe('queryExecutor', () => {
             }
             const res = await queryExecutor.executeInDatabase(query)
             assert.equal(res.length, 2)
+        })
+    })
+    describe('#executeDistributed()', () => {
+        it('should distribute the query execution and merge the resultsets', () => {
+            const finalQuery = `select distinct table_mock_alias.column_3 as "3" from table_mock as table_mock_alias where table_mock_alias.time_column_1 >= '2018-04-26 11:00:00' and table_mock_alias.time_column_1 <= '2018-04-26 23:40:00' and table_mock_alias.column_7 in ('44') and table_mock_alias.column_1='COL--1' and table_mock_alias.column_2='COL--2' order by "3" limit 11`
+            const result = queryExecutor.executeDistributed(finalQuery)
         })
     })
 });

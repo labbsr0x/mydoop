@@ -3,6 +3,14 @@ const debug = require('debug')('parse-utils-debug')
 
 module.exports = {
 
+    isKeyWord: function(str) {
+        return !!str.match(/(and\s*|or\s*)/g)
+    },
+
+    isOperator: function (str) {
+        return !!str.match(/(>=\s*|<=\s*|>\s*|<\s*|<>\s*|=\s*|between\s*|like\s*|in\s*)/g)
+    },
+
     normalizeQuery: function(query) {
         return query.replace(/\s\s+/g, ' ').replace(/\n/g, '').toLowerCase().trim()
     },

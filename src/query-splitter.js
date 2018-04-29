@@ -12,7 +12,7 @@ module.exports = {
         const projectionTerms = queryParser.getProjectionTerms(query)
         debug('projectionTerms:: ', projectionTerms)
 
-        const originalQuerySecondPart = `from ${query.split('from')[1]}`        
+        const originalQuerySecondPart = `from ${query.split(' from ')[1]}`        
         debug('originalQuerySecondPart:: ', originalQuerySecondPart)
         
         let newQueries = [{ sql: "select ", aggregationType: "NONE", term: "FULL", targetColumn: "NONE", distinct: false, role: "MASTER"} ]
@@ -24,12 +24,13 @@ module.exports = {
             if (t.distinct && t.aggregationType != 'NONE') { 
                 newQueries[0].sql += `-1 as "${t.term.alias}",` //temporary 0 to be replaced when the derived aggregation finishes
 
-                let secondPartGroupByArr = originalQuerySecondPart.split('group by')
+                let secondPartGroupByArr = originalQuerySecondPart.split(' group by ')
                 let secondPartWithoutGroupBy = secondPartGroupByArr[0]
                 let andClauseWithGroupByTerms = ''
                 if (secondPartGroupByArr[1]) { //identify the GROUP BY terms that will be distinct fetch separately to have the aggregation made in code
-                    andClauseWithGroupByTerms = secondPartGroupByArr[1].split('order by')[0].split('limit')[0]
-                                            .split('having')[0]
+                    andClauseWithGroupByTerms = secondPartGroupByArr[1].split(' order by ')[0]
+                                            .split(' limit ')[0]
+                                            .split(' having ')[0]
                                             .split(',')
                                             .reduce((a, b, idx) => a + ` and ${b.trim()}={${queryParser.getAliasByColumnExpression(b, projectionTerms)}}`, '')                                            
                 }
