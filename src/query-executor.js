@@ -54,16 +54,22 @@ module.exports = {
 
     },
 
-    mergeQueryWithParams: function (query, rowResultRefParam) {
+    mergeSQLWithParams: function (sql, rowResultRefParam) {
         //get the parameters
-        const columnNamesParam = query.match(/\{(.*?)\}/g).map(p => p.replace(/[\{|\}]/g, ''))
+        const params = sql.match(/\{(.*?)\}/g)
+        if (!params) {
+            return sql
+        }
+        const columnNamesParam = params.map(p => p.replace(/[\{|\}]/g, '')) // get the param without the `{}` to be able to get the attribute from the resultset
         columnNamesParam.forEach(c => {
-            query = query.replace(new RegExp(`{${c}}`), rowResultRefParam[c])
-        })  
+            const refValue = typeof (rowResultRefParam[c]) == "string" ? `'${rowResultRefParam[c]}'` : rowResultRefParam[c]
+            sql = sql.replace(new RegExp(`\{(${c})\}`), refValue)
+        })
+        return sql  
     },
 
-    executeDistributed: function(query, rowResultRefParam) {
-        
+    executeDistributed: function(sql, rowResultRefParam) {
+        const mergedSQL = this.mergeSQLWithParams(sql, rowResultRefParam)
     },
 
     /**
@@ -91,7 +97,7 @@ module.exports = {
                 // -- THIS IS WHERE IN-CODE AGGREGATION HAPPENS
 
                 aggregationQueries.forEach(async aq => {
-                    //to replace the `0` placed in the original query with the actual value from the aggregation
+                    //will replace the `-1` placed in the original query with the actual value from the in-code aggregation
                     let aggResult = await this.executeDistributed(aq.sql, row) //pass the row parameter to get the value to the columns that are in the `where` clause                
                     //in-code aggregation
                     if (aq.aggregationType.toUpperCase() == 'COUNT') {                                                

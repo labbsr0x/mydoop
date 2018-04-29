@@ -64,4 +64,43 @@ describe('queryParser', () => {
         });
 
     });
+
+    describe('#getAliasByColumnExpression()', () => {
+        it('should find the column alias by the projection expression', () => {
+            const mockTerms = [{
+                term: { expression: 'table_mock_alias.column_1', alias: '1' },
+                aggregationType: 'NONE',
+                distinct: false
+            },
+            {
+                term: { expression: 'table_mock_alias.column_2', alias: '2' },
+                aggregationType: 'NONE',
+                distinct: false
+            },
+            { 
+                term: { expression: 'count(distinct table_mock_alias.column_3)', alias: '3' },
+                aggregationType: 'COUNT',
+                distinct: true
+            },
+            {
+                term: { expression: 'count(*)', alias: '4' },
+                aggregationType: 'COUNT',
+                distinct: false
+            },
+            {
+                term: { expression: 'max(table_mock_alias.column_4)', alias: '6' },
+                aggregationType: 'MAX',
+                distinct: false
+            },
+            {
+                term: { expression: 'sum(case table_mock_alias.column_4 when 1 then 1 when 0 then 1 else 0 end)', alias: '8' },
+                aggregationType: 'SUM',
+                distinct: false
+            }]
+            
+            mockTerms.forEach(t => {
+                assert.equal(queryParser.getAliasByColumnExpression(t.term.expression, mockTerms), t.term.alias)
+            })
+        });
+    })
 });

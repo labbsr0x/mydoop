@@ -56,6 +56,15 @@ module.exports = {
 
     getColumnName: (txt) => {
         return txt.replace(/(distinct|count|sum|avg|max|min|\(|\))/g, '').trim()        
+    },
+
+    getAliasByColumnExpression: (columnExpression, projectionTermsParam) => {
+        log('getAlias for:: ', columnExpression.trim().toLowerCase())
+        debug('projectionTermsParam:: ', projectionTermsParam)
+        const termsFound = projectionTermsParam.filter( (ptp) => ptp.term.expression.trim().toLowerCase() == columnExpression.trim().toLowerCase())
+        debug('termsFound:: ', termsFound)
+        log('result:: ', termsFound[0].term.alias)
+        return termsFound[0].term.alias
     }
 
 }

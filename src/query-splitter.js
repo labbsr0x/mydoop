@@ -31,7 +31,7 @@ module.exports = {
                     andClauseWithGroupByTerms = secondPartGroupByArr[1].split('order by')[0].split('limit')[0]
                                             .split('having')[0]
                                             .split(',')
-                                            .reduce((a, b, idx) => a + ` and ${b.trim()}={${b.trim()}}`, '')                                            
+                                            .reduce((a, b, idx) => a + ` and ${b.trim()}={${queryParser.getAliasByColumnExpression(b, projectionTerms)}}`, '')                                            
                 }
                 const derivedQuery = parseUtils.normalizeQuery(`select ${t.term.expression.replace(/[()]/g, '')} as "${t.term.alias}" ${secondPartWithoutGroupBy} ${andClauseWithGroupByTerms}`.replace(t.aggregationType.toLowerCase(), ''))
                 debug('derivedQuery', derivedQuery)

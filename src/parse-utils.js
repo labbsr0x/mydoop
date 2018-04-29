@@ -1,3 +1,6 @@
+const log = require('debug')('parse-utils-log')
+const debug = require('debug')('parse-utils-debug')
+
 module.exports = {
 
     normalizeQuery: function(query) {
@@ -9,9 +12,11 @@ module.exports = {
      */
     extractProjectionTerms: function(query) {
         query = this.normalizeQuery(query)
-        return query.substring(query.indexOf('select') + 'select'.length, query.indexOf('from'))
+        const res = query.substring(query.indexOf('select') + 'select'.length, query.indexOf('from'))
                               .split(',')
                               .map(p => p.split(' as '))
                               .map(x => { return { "expression": x[0].trim(), "alias": (x[1] ? x[1].trim().replace(/[\"|\`]/g, '') : '') } })
+        debug('res:::', res)
+        return res                              
     }
 }

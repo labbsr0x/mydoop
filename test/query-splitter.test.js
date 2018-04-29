@@ -35,8 +35,8 @@ describe('querySplitter', () => {
         it('should return 2 AGGREGATION queries extracted', () => {
             assert.equal(result[1].role, 'AGGREGATION')
             assert.equal(result[2].role, 'AGGREGATION')
-            assert.equal(result[1].sql, `select distinct table_mock_alias.column_3 as "3" from table_mock as table_mock_alias where table_mock_alias.time_column_1 >= '2018-04-26 11:00:00' and table_mock_alias.time_column_1 <= '2018-04-26 23:40:00' and table_mock_alias.column_7 in ('44') and table_mock_alias.column_1={table_mock_alias.column_1} and table_mock_alias.column_2={table_mock_alias.column_2}`)
-            assert.equal(result[2].sql, `select distinct table_mock_alias.column_8 as "10" from table_mock as table_mock_alias where table_mock_alias.time_column_1 >= '2018-04-26 11:00:00' and table_mock_alias.time_column_1 <= '2018-04-26 23:40:00' and table_mock_alias.column_7 in ('44') and table_mock_alias.column_1={table_mock_alias.column_1} and table_mock_alias.column_2={table_mock_alias.column_2}`)
+            assert.equal(result[1].sql, `select distinct table_mock_alias.column_3 as "3" from table_mock as table_mock_alias where table_mock_alias.time_column_1 >= '2018-04-26 11:00:00' and table_mock_alias.time_column_1 <= '2018-04-26 23:40:00' and table_mock_alias.column_7 in ('44') and table_mock_alias.column_1={1} and table_mock_alias.column_2={2}`)
+            assert.equal(result[2].sql, `select distinct table_mock_alias.column_8 as "10" from table_mock as table_mock_alias where table_mock_alias.time_column_1 >= '2018-04-26 11:00:00' and table_mock_alias.time_column_1 <= '2018-04-26 23:40:00' and table_mock_alias.column_7 in ('44') and table_mock_alias.column_1={1} and table_mock_alias.column_2={2}`)
             assert.equal(result[2].targetColumn, 'table_mock_alias.column_8')
             assert.equal(result[1].targetColumn, 'table_mock_alias.column_3')
         })
