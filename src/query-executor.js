@@ -69,15 +69,22 @@ module.exports = {
     },
 
     executeDistributed: function(sql, rowResultRefParam) {
-        const mergedSQL = this.mergeSQLWithParams(sql, rowResultRefParam)
+        return new Promise((resolve, reject) => {
+            
+            const mergedSQL = this.mergeSQLWithParams(sql, rowResultRefParam)
+            // find the columns that has range comparasion to distribute the load
+
+        })
     },
 
     /**
-     * Execute the queries and "post-process" depending on the `type` attribute of the query
+     * Execute the composition of queries and "post-process" depending on the `type` attribute of the query.
+     * The strategy is to first run the master query, then, with its results, find the GROUP BY column values on the resultset
+     * and then run the derived aggregation queries for each of those GROUP BY values. That's where the parallelism goes.!
      * 
      * @returns Array [] with the result of the queries 
      */
-    executeParallelQueries: async function(queries) {
+    executeComposedQueries: async function(queries) {
         debug('queries::', queries)
 
         return new Promise(async (resolve, reject) => {
@@ -88,11 +95,15 @@ module.exports = {
                 reject('At least one MASTER query must be provided to run parallel queries')
                 throw new Error('At least one MASTER query must be provided to run parallel queries')
             }
+
+            //
+            //-- first, we run the MASTER query to get the GROUP BY column values to use in the AGGREGATION queries, derived from the original query
             const result = await this.executeDistributed(masterQuery)
             if (aggregationQueries.length==0) {
                 return resolve(result)
             }
 
+            //-- with the result of the MASTER query, we will execute the AGGREGATION queries to compose the final resultset
             result.forEach(row => {
                 // -- THIS IS WHERE IN-CODE AGGREGATION HAPPENS
 
