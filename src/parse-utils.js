@@ -8,7 +8,7 @@ module.exports = {
     },
 
     isOperator: function (str) {
-        return !!str.match(/(>=\s*|<=\s*|>\s*|<\s*|<>\s*|=\s*|between\s*|like\s*|in\s*)/g)
+        return !!str.match(/(>=\s*|<=\s*|>\s*|<\s*|<>\s*|=\s*|!=\s*|between\s*|like\s*|in\s*)/g)
     },
 
     normalizeQuery: function(query) {

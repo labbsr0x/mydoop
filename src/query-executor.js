@@ -46,7 +46,7 @@ module.exports = {
                         reject(error)
                         throw error;
                     }
-                    log('results: ', results);
+                    log('results: ', sql, results);
                     resolve(results)
                 });
             })
@@ -83,15 +83,20 @@ module.exports = {
 
     /**
      * @param arrTerms `Array[]` of the original WHERE clause terms to be expanded into multiple WHEREs to be distributed
-     * @param secondsInterval `integer` indicating how many seconds should be used as interval between the distributed WHEREs
+     * @param distributionFactor `integer` indicating how many parallel execution you want to distributed the query. It will be used to calculate the TIME interval used as values in the time columns
      * @returns `Array[]` of multiple WHERE clause string, separated by given interval
      */
-    buildTimeDistributedWhereClause: function(arrTerms, secondsInterval) {
+    buildTimeDistributedWhereClause: function (arrTerms, distributionFactor) {
+        debug('arrTerms:::', arrTerms)
+        if (!distributionFactor) {
+            distributionFactor = 48
+        }
         const timedTerms = arrTerms.filter(t => t.rightTerm && !!t.rightTerm.match(/('\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}')/g))
                                     .reduce((acc, term) => {
                                         if (!term.leftTerm) return acc
                                     
-                                        const dateValue = new Date(term.rightTerm.replace(/\'/g, ''))     
+                                        const dateValue = new Date(term.rightTerm.replace(/\'/g, ''))  
+                                        debug('DATEVALUE::', dateValue.toUTCString(), term.rightTerm)   
 
                                         let currentTermArr = acc.filter(a => a.termName == term.leftTerm)
                                         if (!currentTermArr || currentTermArr.length==0) {
@@ -111,14 +116,19 @@ module.exports = {
                                     }, [])
 
         debug('timedTerms::', timedTerms)                                   
+
+        //------
+        //--- IMPORTANT! Currently, only one time column is supported in the WHERE clause
+        //------
         if (timedTerms.length != 1) {
             throw new Error('Currently mydoop doesnt support more than one timed column in the WHERE clause nor the BETWEEN operator')
         }
+
         const isTimedTerm = (term) => {
             return timedTerms.filter(t => t.termName == term).length > 0
         }
-        let basicWHERE = 'where '
-        basicWHERE += arrTerms.reduce((str, term) => {
+        let baseWHERE = 'where '
+        baseWHERE += arrTerms.reduce((str, term) => {
 
             if (term.connector) { //"and" "or"
                 return str += ` ${term.connector} `
@@ -136,44 +146,60 @@ module.exports = {
             return str
         }, '')
 
-        log('basicWHERE::', basicWHERE)
+        log('baseWHERE::', baseWHERE)        
 
-        // let start = moment()
-        // let fim = inicio.clone()
-        // let intervals = []
-        // //montar a lista de intervalos
-        // for (var i = 0; i < parallelRate; i++) {
+        let rate = ((timedTerms[0].maxValue.getTime() - timedTerms[0].minValue.getTime()) / 1000) / distributionFactor
+        debug('distributionFactor::', distributionFactor)
+        debug('rate::', rate)
+        let start = moment(timedTerms[0].minValue)
+        debug('TIMESTAMP::::', start, timedTerms[0].minValue.toString())
+        let end = start.clone()
+        let intervals = []
 
-        //     fim.add(rate, 'hour').subtract(1, 'second');
-        //     intervals.push({
-        //         "inicio": inicio.format('YYYY-MM-DD HH:mm:ss'),
-        //         "fim": fim.format('YYYY-MM-DD HH:mm:ss')
-        //     })
+        for (var i = 0; i < distributionFactor; i++) {
 
-        //     fim.add(1, 'second');
-        //     inicio.add(rate, 'hour');
-        // }
+            end.add(rate, 'second').subtract(1, 'second');
+            intervals.push({
+                "start": start.format('YYYY-MM-DD HH:mm:ss'),
+                "end": end.format('YYYY-MM-DD HH:mm:ss')
+            })
+
+            end.add(1, 'second');
+            start.add(rate, 'second');
+        }
+        intervals[0].start = moment(timedTerms[0].minValue).format('YYYY-MM-DD HH:mm:ss')
+        intervals[intervals.length - 1].end = moment(timedTerms[0].maxValue).format('YYYY-MM-DD HH:mm:ss')
+        debug('intervals[]', intervals)
+
+        const distributedQueries = intervals.map(interval => baseWHERE.replace(/\{minValue\}/g, `'${interval.start}'`).replace(/\{maxValue\}/g, `'${interval.end}'`))
+        debug('distributedQueries::', distributedQueries)
+        return distributedQueries
     },
 
     /**
-     * Executes a query distributedly
+     * Executes a query distributedly, but DONT make in-code aggregation or something like. Just runs the query
+     * parallelizing it if possible
      * 
      * @param sql - the SQL to be executed
      * @returns a Promise for the distributed queries execution
      */
-    executeDistributed: function(sql) {
+    executeDistributed: function(sql, distributionFactor) {
+        info('> executeDistributed(sql, distributionFactor)::> ', sql, distributionFactor)
+        if (!distributionFactor) {
+            distributionFactor = 12
+        }
         return new Promise((resolve, reject) => {
             
-            let sqlWhereTokensArr = sql.split(' where ')
-            if (sqlWhereTokensArr.length == 1) { //the query doesnt have `WHERE` clause.
+            let sqlProjectionFilterArr = sql.split(' where ')
+            if (sqlProjectionFilterArr.length == 1) { //the query doesnt have `WHERE` clause.
                 info('Distributing "non-where" queries is not yet supported:', sql)
                 return resolve(this.executeInDatabase(sql))
             }
 
             // find the columns that has range comparision to distribute the load between multiple queries
-            debug('sqlWhereTokensArr-where-and+::', sqlWhereTokensArr)                                       
+            debug('sqlProjectionFilterArr-where-and+::', sqlProjectionFilterArr)                                       
             //tokenize the WHERE terms to find the range candidate columns to distribute
-            sqlWhereTokensArr = sqlWhereTokensArr[1].split(' order by ')[0]
+            let sqlWhereTokensArr = sqlProjectionFilterArr[1].split(' order by ')[0]
                                     .split(' limit ')[0]
                                     .split(' having ')[0]
                                     .split(/(\('[^'|\\']*'\)\s*|'[^'|\\']*'\s*|>=\s*|<=\s*|>\s*|<\s*|<>\s*|=\s*|and\s*|or\s*|between\s*|like\s*|in\s*)/g)
@@ -198,22 +224,24 @@ module.exports = {
             
             debug('whereTerms::', whereTerms)
 
-            const possibleWheres = this.buildTimeDistributedWhereClause(whereTerms, 3600)
-            log('possibleWheres::', possibleWheres)
+            const whereClauses = this.buildTimeDistributedWhereClause(whereTerms, distributionFactor)
+            log('whereClauses::', whereClauses)
 
-            // async.map(queries, async q => {
-            //     log('Executing QUERY::', q)
-            //     return await this.execute(q)
-            // }, (err, data) => {
-            //     // console.log('data', data);
-
-            //     // console.log(new Date().getTime()-time);
-            //     // const res = [...new Set(data.reduce((a, b) => a.concat(b)))] ==>>> Para poder fazer o DISTINCT, tem que colocar num SET
-            //     const res = data.reduce((a, b) => a.concat(b))
-            //     // console.log('res', res.length);
-
-            //     callback(res)
-            // })
+            const queries = whereClauses.map(w => `${sqlProjectionFilterArr[0]} ${w}`)
+            log('==>> DISTRIBUTED QUERIES ::', queries)
+            async.map(queries, async q => {
+                log('Executing QUERY::', q)
+                return await this.executeInDatabase(q)
+            }, (err, data) => {
+                if (err) {
+                    console.error("ERROR::", err)
+                    reject(err)
+                }
+                
+                const res = data.reduce((a, b) => b.length>0 ? a.concat(b) : a)
+                info('> executeDistributed[RESOLVE()]::> ', res)
+                resolve(res)
+            })
         })
     },
 
