@@ -52,6 +52,10 @@ module.exports = {
                 debug('transformParams:: ', transformParams)
                 return transformParams
             })
+    },
+
+    getColumnName: (txt) => {
+        return txt.replace(/(distinct|count|sum|avg|max|min|\(|\))/g, '').trim()        
     }
 
 }

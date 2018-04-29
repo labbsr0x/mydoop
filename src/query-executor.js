@@ -10,12 +10,12 @@ var async = require('async')
 module.exports = {
 
     /**
-     * Executes a query and make any needed post-resultset aggregation
+     * Simple executes the query to the database
      * 
-     * @returns Array [] with the result set post-processed
+     * @returns Array [] with the resultset from database
      */
-    execute: function (query) {
-        debug('query::', query)
+    executeInDatabase: function (sql) {
+        debug('query::', sql)
 
         const mysqlHost = process.env.MYSQL_HOST || '172.20.54.11'
         const mysqlPort = process.env.MYSQL_PORT || '3306'
@@ -31,33 +31,50 @@ module.exports = {
             database: mysqlDatabase
         });
 
-        const connectAndExecute = (cb) => {
+        return new Promise((resolve, reject) => {
+
             connection.connect((err, args) => {
                 if (err) {
                     console.error(err)
                     reject(error)
                     throw err
                 }
-                connection.query(query.sql, function (error, results, fields) {
+                connection.query(sql, function (error, results, fields) {
                     if (error) {
                         console.error(error);
                         reject(error)
                         throw error;
                     }
                     log('results: ', results);
-                    cb(results)
+                    resolve(results)
                 });
             })
-        }
-        return new Promise((resolve, reject) => {
-            if (query.aggregationType == 'DIRECT') {
-                connectAndExecute(r => resolve(r))
-            }else{
-                connectAndExecute(r => {
-                    resolve(r)
-                })
-            }
+
         })
+
+        // return new Promise((resolve, reject) => {
+        //     // if the query has DISTINCT constraint, than it should be resolved on another pipeline
+        //     // after all the result sets are merged, because the distinct aggregation cannot be made in isolated batches
+        //     if (query.aggregationType == 'NONE' || query.distinct || query.aggregationType == 'MAX' || query.aggregationType == 'MIN') {
+        //         connectAndExecute(query, r => resolve(r))
+        //     }else{                
+        //         // if the query is an aggregation of COUNT or SUM and the is no "distinct" constraint
+        //         // then the aggregation can b
+        //         connectAndExecute(query, r => {
+        //             if (query.aggregationType.toUpperCase() == 'COUNT') {                                                
+        //                 const cnt = [...new Set(r)].length
+        //                 debug('AGGREGATION TYPE :COUNT:', cnt)    
+        //                 resolve(cnt)
+        //             }else if (query.aggregationType.toUpperCase() == 'SUM') {
+        //                 const sum = r.reduce((a, b) => a + Object.values(b)[0], 0)
+        //                 debug('AGGREGATION TYPE :SUM:', sum)    
+        //                 resolve(sum)
+        //             }else{
+        //                 resolve(r)
+        //             }
+        //         })
+        //     }
+        // })
 
     },
 
