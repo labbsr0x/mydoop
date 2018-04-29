@@ -3,42 +3,6 @@ const queryExecutor = require('../src/query-executor')
 
 describe('queryExecutor', () => {
 
-    describe('#mergeSQLWithParams()', () => {
-        it('should keep the SQL unmodified as it doesnt has special params', () => {
-            const targetQuery = `select distinct table_mock_alias.column_3 as "3" from table_mock as table_mock_alias where table_mock_alias.time_column_1 >= '2018-04-26 11:00:00' and table_mock_alias.time_column_1 <= '2018-04-26 23:40:00' and table_mock_alias.column_7 in ('44')`
-            const resultSetMock = {
-                '1': 'COL--1',
-                '2': 'COL--2',
-                '3': -1,
-                '4': 4,
-                '5': 268,
-                '6': 222,
-                '7': 401,
-                '8': 0,
-                '9': 0,
-                '10': -1
-            }
-            const finalQuery = queryExecutor.mergeSQLWithParams(targetQuery, resultSetMock)            
-            assert.equal(finalQuery, targetQuery)
-        })
-        it('should replace the SQL column placeholders with the values from the other resultset', () => {
-            const targetQuery = `select distinct table_mock_alias.column_3 as "3" from table_mock as table_mock_alias where table_mock_alias.time_column_1 >= '2018-04-26 11:00:00' and table_mock_alias.time_column_1 <= '2018-04-26 23:40:00' and table_mock_alias.column_7 in ('44') and table_mock_alias.column_1={1} and table_mock_alias.column_2={2}`
-            const resultSetMock = {
-                '1': 'COL--1',
-                '2': 'COL--2',
-                '3': -1,
-                '4': 4,
-                '5': 268,
-                '6': 222,
-                '7': 401,
-                '8': 0,
-                '9': 0,
-                '10': -1
-            }
-            const finalQuery = queryExecutor.mergeSQLWithParams(targetQuery, resultSetMock)
-            assert.equal(finalQuery, `select distinct table_mock_alias.column_3 as "3" from table_mock as table_mock_alias where table_mock_alias.time_column_1 >= '2018-04-26 11:00:00' and table_mock_alias.time_column_1 <= '2018-04-26 23:40:00' and table_mock_alias.column_7 in ('44') and table_mock_alias.column_1='COL--1' and table_mock_alias.column_2='COL--2'`)            
-        })
-    })
     describe('#execute()', () => {
         it('should execute a NONE query and return a resultset as array', async () => {
             const query = {
@@ -75,6 +39,42 @@ describe('queryExecutor', () => {
             }
             const res = await queryExecutor.executeInDatabase(query)
             assert.equal(res.length, 2)
+        })
+    })
+    describe('#mergeSQLWithParams()', () => {
+        it('should keep the SQL unmodified as it doesnt has special params', () => {
+            const targetQuery = `select distinct table_mock_alias.column_3 as "3" from table_mock as table_mock_alias where table_mock_alias.time_column_1 >= '2018-04-26 11:00:00' and table_mock_alias.time_column_1 <= '2018-04-26 23:40:00' and table_mock_alias.column_7 in ('44')`
+            const resultSetMock = {
+                '1': 'COL--1',
+                '2': 'COL--2',
+                '3': -1,
+                '4': 4,
+                '5': 268,
+                '6': 222,
+                '7': 401,
+                '8': 0,
+                '9': 0,
+                '10': -1
+            }
+            const finalQuery = queryExecutor.mergeSQLWithParams(targetQuery, resultSetMock)
+            assert.equal(finalQuery, targetQuery)
+        })
+        it('should replace the SQL column placeholders with the values from the other resultset', () => {
+            const targetQuery = `select distinct table_mock_alias.column_3 as "3" from table_mock as table_mock_alias where table_mock_alias.time_column_1 >= '2018-04-26 11:00:00' and table_mock_alias.time_column_1 <= '2018-04-26 23:40:00' and table_mock_alias.column_7 in ('44') and table_mock_alias.column_1={1} and table_mock_alias.column_2={2}`
+            const resultSetMock = {
+                '1': 'COL--1',
+                '2': 'COL--2',
+                '3': -1,
+                '4': 4,
+                '5': 268,
+                '6': 222,
+                '7': 401,
+                '8': 0,
+                '9': 0,
+                '10': -1
+            }
+            const finalQuery = queryExecutor.mergeSQLWithParams(targetQuery, resultSetMock)
+            assert.equal(finalQuery, `select distinct table_mock_alias.column_3 as "3" from table_mock as table_mock_alias where table_mock_alias.time_column_1 >= '2018-04-26 11:00:00' and table_mock_alias.time_column_1 <= '2018-04-26 23:40:00' and table_mock_alias.column_7 in ('44') and table_mock_alias.column_1='COL--1' and table_mock_alias.column_2='COL--2'`)
         })
     })
     describe('#buildTimeDistributedWhereClause()', () => {
@@ -135,5 +135,10 @@ describe('queryExecutor', () => {
             assert.equal(result[2]['3'], 113)
         })
         
+    })
+    describe('#executeComposedQueries()', () => {
+        it('should execute a series of queries and merge its result', async () => {
+
+        })        
     })
 });
