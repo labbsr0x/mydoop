@@ -4,16 +4,16 @@ const queryParser = require('../src/query-parser')
 describe('queryParser', () => {
     describe('#getProjectionTerms()', () => {
         let query = `SELECT
-                        table_mock_alias.column_1 , 
-                        table_mock_alias.column_2 , 
-                        count(distinct table_mock_alias.column_3) , 
-                        count(*) , 
-                        sum(table_mock_alias.column_4) , 
-                        max(table_mock_alias.column_4) , 
-                        sum(table_mock_alias.column_5) , 
-                        sum(case table_mock_alias.column_4 when 1 then 1 when 0 then 1 else 0 end) , 
-                        sum(case table_mock_alias.column_6 when 1 then 1 else 0 end) , 
-                        count(distinct table_mock_alias.column_7) 
+                        table_mock_alias.column_1 as "1", 
+                        table_mock_alias.column_2 as "2", 
+                        count(distinct table_mock_alias.column_3) as "3", 
+                        count(*) as "4", 
+                        sum(table_mock_alias.column_4) as "5", 
+                        max(table_mock_alias.column_4) as "6", 
+                        sum(table_mock_alias.column_5) as "7", 
+                        sum(case table_mock_alias.column_4 when 1 then 1 when 0 then 1 else 0 end) as "8", 
+                        sum(case table_mock_alias.column_6 when 1 then 1 else 0 end) as "9", 
+                        count(distinct table_mock_alias.column_8) as "10"
                         FROM
                         table_mock AS table_mock_alias
                         WHERE

@@ -11,6 +11,7 @@ module.exports = {
         query = this.normalizeQuery(query)
         return query.substring(query.indexOf('select') + 'select'.length, query.indexOf('from'))
                               .split(',')
-                              .map(p => p.trim())
+                              .map(p => p.split(' as '))
+                              .map(x => { return { "expression": x[0].trim(), "alias": (x[1] ? x[1].trim().replace(/[\"|\`]/g, '') : '') } })
     }
 }

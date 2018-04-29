@@ -29,23 +29,23 @@ module.exports = {
                     aggregationType: 'NONE',
                     distinct: false
                 }
-                if (it.toLowerCase().indexOf('sum(') != -1) {
+                if (it.expression.toLowerCase().indexOf('sum(') != -1) {
                     transformParams.aggregationType = 'SUM'
                 }
-                if (it.toLowerCase().indexOf('count(') != -1) {
+                if (it.expression.toLowerCase().indexOf('count(') != -1) {
                     transformParams.aggregationType = 'COUNT'
                 }
-                if (it.toLowerCase().indexOf('max(') != -1) {
+                if (it.expression.toLowerCase().indexOf('max(') != -1) {
                     transformParams.aggregationType = 'MAX'
                 }
-                if (it.toLowerCase().indexOf('min(') != -1) {
+                if (it.expression.toLowerCase().indexOf('min(') != -1) {
                     transformParams.aggregationType = 'MIN'
                 }
-                if (it.toLowerCase().indexOf('avg(') != -1) {
+                if (it.expression.toLowerCase().indexOf('avg(') != -1) {
                     transformParams.aggregationType = 'AVG'
                 }
 
-                if (it.toLowerCase().indexOf('distinct') != -1) {
+                if (it.expression.toLowerCase().indexOf('distinct') != -1) {
                     transformParams.distinct = true
                 }
 
