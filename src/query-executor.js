@@ -2,7 +2,7 @@ const info = require('debug')('query-executor-info')
 const log = require('debug')('query-executor-log')
 const debug = require('debug')('query-executor-debug')
 const parseUtils = require('./parse-utils')
-const querySplitter = require('./query-splitter')
+const queryParser = require('./query-parser')
 
 var mysql = require('mysql');
 var moment = require('moment');
@@ -177,6 +177,53 @@ module.exports = {
     },
 
     /**
+     * Takes a resultset and consolidate making in-code summarization of the results in a NON-DISTINCT expected aggregation
+     * 
+     * @param resultset - Array[] with the objects that will be consolidated
+     * @param projectionTerms - Array[] with the projection itens config
+     * @param groupByColumns - Array[] with the group by column
+     * 
+     * @returns Array[] with the consolidated result, with aggregation summarization applied.
+     */
+    consolidateResultNonDistinct: function(resultset, projectionTerms, groupByColumns) {
+        info('> #consolidateResultNonDistinct::>', resultset, projectionTerms, groupByColumns)
+
+        const hasSameGroupBy = (x,y) => { //check wether all the group by columns has the same value in both objects
+            return (groupByColumns.length == groupByColumns.filter(g => x[g.term.alias] == y[g.term.alias]).length )
+        } 
+
+        const res = resultset.reduce((a, b) => { 
+                const currentAccArr = a.filter(acc => hasSameGroupBy(b, acc))
+                if (currentAccArr.length == 1) {//fazer as agregações como SUM, MAX, AVG, ETC
+                    Object.keys(b).map(k => {
+                        const attributeConfig = queryParser.getProjectionItemByAlias(k, projectionTerms)
+                        //the COUNT aggregation can be done with sum (+) because this method is not aimed to be used in DISTINCT scenarios
+                        if (attributeConfig.aggregationType == 'COUNT' || attributeConfig.aggregationType == 'SUM') {
+                            currentAccArr[0][k] = b[k] + currentAccArr[0][k]
+
+                        } else if (attributeConfig.aggregationType == 'MAX' && currentAccArr[0][k] < b[k]) {
+                            currentAccArr[0][k] = b[k]
+
+                        } else if (attributeConfig.aggregationType == 'MIN' && currentAccArr[0][k] > b[k]) {
+                            currentAccArr[0][k] = b[k]
+
+                        } else if (attributeConfig.aggregationType == 'AVG') {
+                            currentAccArr[0][k] = (b[k] + currentAccArr[0][k]) / 2
+
+                        }
+                    })
+                }else{
+                    a.push(b)
+                }
+                return a                
+                
+            }, [])
+        
+        info('> #consolidateResultNonDistinct (RESULT)::>', res)    
+        return res
+    },
+
+    /**
      * Executes a query distributedly, but DONT make in-code aggregation or something like. Just runs the query
      * parallelizing it if possible
      * 
@@ -188,6 +235,8 @@ module.exports = {
         if (!distributionFactor) {
             distributionFactor = 12
         }
+        const projectionTerms = queryParser.getProjectionTerms(sql)
+        debug('projectionTerms', projectionTerms)
         return new Promise((resolve, reject) => {
             
             let sqlProjectionFilterArr = sql.split(' where ')
@@ -200,6 +249,7 @@ module.exports = {
             debug('sqlProjectionFilterArr-where-and+::', sqlProjectionFilterArr)                                       
             //tokenize the WHERE terms to find the range candidate columns to distribute
             let sqlWhereTokensArr = sqlProjectionFilterArr[1].split(' order by ')[0]
+                                    .split(' group by ')[0]
                                     .split(' limit ')[0]
                                     .split(' having ')[0]
                                     .split(/(\('[^'|\\']*'\)\s*|'[^'|\\']*'\s*|>=\s*|<=\s*|>\s*|<\s*|<>\s*|=\s*|and\s*|or\s*|between\s*|like\s*|in\s*)/g)
@@ -227,7 +277,13 @@ module.exports = {
             const whereClauses = this.buildTimeDistributedWhereClause(whereTerms, distributionFactor)
             log('whereClauses::', whereClauses)
 
-            const queries = whereClauses.map(w => `${sqlProjectionFilterArr[0]} ${w}`)
+            let afterWhereClauseArr = sqlProjectionFilterArr[1].split(/(\s+group\s+by\s+|\s+order\s+by\s+|\s+limit\s+)/g)
+            let afterWhereClause = ''
+            if (afterWhereClauseArr.length > 1) {
+                afterWhereClauseArr = afterWhereClauseArr.splice(1, afterWhereClauseArr.length-1)
+                afterWhereClause = afterWhereClauseArr.reduce((a,b) => `${a} ${b}`, '')
+            }
+            const queries = whereClauses.map(w => `${sqlProjectionFilterArr[0]} ${w} ${afterWhereClause}`)
             log('==>> DISTRIBUTED QUERIES ::', queries)
             async.map(queries, async q => {
                 log('Executing QUERY::', q)
@@ -237,8 +293,13 @@ module.exports = {
                     console.error("ERROR::", err)
                     reject(err)
                 }
-                
-                const res = data.reduce((a, b) => b.length>0 ? a.concat(b) : a)
+                            
+                let res = data.reduce((a, b) => a.concat(b))
+                const groupByTerms = projectionTerms.filter(p => p.aggregationType=='NONE' && p.term.expression != '-1')
+                //checks wether the query needs to be consolidated (aggregated).
+                if (projectionTerms.filter(p => p.aggregationType!='NONE').length > 0) {
+                    res = this.consolidateResultNonDistinct(res, projectionTerms, groupByTerms)                
+                }
                 info('> executeDistributed[RESOLVE()]::> ', res)
                 resolve(res)
             })
@@ -250,39 +311,44 @@ module.exports = {
      * The strategy is to first run the master query, then, with its results, find the GROUP BY column values on the resultset
      * and then run the derived aggregation queries for each of those GROUP BY values. That's where the parallelism goes.!
      * 
+     * @param queries composition of at least one MASTER query and other AGGREGATION queries to run and compose the result
      * @returns Array [] with the result of the queries 
      */
     executeComposedQueries: async function(queries) {
-        debug('queries::', queries)
-
+        info('> executeComposedQueries::', queries)
+        
         return new Promise(async (resolve, reject) => {
-
+            
             const masterQuery = queries.filter(q => q.role == "MASTER")[0]
+            debug('masterQuery::', masterQuery)
             const aggregationQueries = queries.filter(q => q.role == "AGGREGATION")
+            debug('aggregationQueries::', aggregationQueries)
             if (!masterQuery) {
                 reject('At least one MASTER query must be provided to run parallel queries')
                 throw new Error('At least one MASTER query must be provided to run parallel queries')
             }
-
+            
             //
             //-- first, we run the MASTER query to get the GROUP BY column values to use in the AGGREGATION queries, derived from the original query
-            const result = await this.executeDistributed(masterQuery)
+            const result = await this.executeDistributed(masterQuery.sql, 2)
+            return null;
+            debut('masterQueryExec-RESULT::', result)
             if (aggregationQueries.length==0) {
                 return resolve(result)
             }
 
             //-- with the result of the MASTER query, we will execute the AGGREGATION queries to compose the final resultset
-            result.forEach(row => {
+            async.map(result, async row => {
                 // -- THIS IS WHERE IN-CODE AGGREGATION HAPPENS
 
                 aggregationQueries.forEach(async aq => {
                     //foreach aggregation query, replace the `-1` value placed in the original query with the actual value from the in-code aggregation
 
                     //merge the SQL with the current row values as parameters
-                    const mergedSQL = this.mergeSQLWithParams(sql, row)                    
+                    const mergedSQL = this.mergeSQLWithParams(aq.sql, row)                    
                     debug('mergedSQL:: ', mergedSQL)
 
-                    let aggResult = await this.executeDistributed(aq.sql) //pass the row parameter to get the value to the columns that are in the `where` clause                
+                    let aggResult = await this.executeDistributed(mergedSQL) //pass the row parameter to get the value to the columns that are in the `where` clause                
                     //in-code aggregation
                     if (aq.aggregationType.toUpperCase() == 'COUNT') {                                                
                         const cnt = aq.distinct ? [...new Set(aggResult)].length : aggResult.length
@@ -307,6 +373,14 @@ module.exports = {
                         row[aq.targetColumn] = -1 //the aggregation was made in the DB
                     }
                 })
+            }, (err, data) => {
+                if (err) {
+                    console.error("ERROR::", err)
+                    reject(err)
+                }
+
+                info('> executeComposedQueries[RESOLVE()]::> ', data)
+                resolve(res)
             })
 
         })

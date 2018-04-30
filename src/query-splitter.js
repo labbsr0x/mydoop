@@ -22,7 +22,7 @@ module.exports = {
             // -- retrieve the distinct values of the GROUP BY columns + the aggregated column
             // -- for each of those distinct values, it will have a query (can be parallelized) to fetch the distinct values and them count in memory
             if (t.distinct && t.aggregationType != 'NONE') { 
-                newQueries[0].sql += `-1 as "${t.term.alias}",` //temporary 0 to be replaced when the derived aggregation finishes
+                newQueries[0].sql += `-1 as "${t.term.alias}",` //temporary -1 to be replaced when the derived aggregation finishes
 
                 let secondPartGroupByArr = originalQuerySecondPart.split(' group by ')
                 let secondPartWithoutGroupBy = secondPartGroupByArr[0]

@@ -57,11 +57,6 @@ describe('queryParser', () => {
             assert.equal(result[9].distinct, true)
         });
 
-        
-        it('should THROW EXCEPTION beacuse it is not yet supported', () => {
-            query = `SELECT DISTINCT * FROM TABLE_MOCK`
-            assert.throws(function() {queryParser.getProjectionTerms(query)})
-        });
 
     });
 

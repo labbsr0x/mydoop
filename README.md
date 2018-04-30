@@ -4,3 +4,5 @@ A middleware to run MySQL queries in a parallel Big Data way (inpired by hadoop)
 # Known Restrictions
 
 - The table and column names must be *lower case*
+
+## Aggregation Summarization vs In-Code Aggregation

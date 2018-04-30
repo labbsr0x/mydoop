@@ -12,17 +12,14 @@ module.exports = {
      * 
      * @returns Array[] with the projection terms and its attributes
      */
-    getProjectionTerms: (query) => {
+    getProjectionTerms: (sql) => {
 
-        query = parseUtils.normalizeQuery(query)
-        let spaces = query.split(' ')
-        if (spaces[0].toLowerCase() == 'select' && spaces[1].toLowerCase() == 'distinct') {
-            throw new Error(`"SELECT DISTINCT" is not yet supported. Only "SELECT" can be used for now.`)
-        }
+        sql = parseUtils.normalizeQuery(sql)
+        let spaces = sql.split(' ')
 
-        log('query:: ', query)
+        log('sql:: ', sql)
         
-        return parseUtils.extractProjectionTerms(query)
+        return parseUtils.extractProjectionTerms(sql)
             .map(it => {
                 let transformParams = {
                     term: it,
@@ -65,6 +62,15 @@ module.exports = {
         debug('termsFound:: ', termsFound)
         log('result:: ', termsFound[0].term.alias)
         return termsFound[0].term.alias
+    },
+
+    getProjectionItemByAlias: (alias, projectionTermsParam) => {
+        log('getProjectionItemByAlias for:: ', alias.trim().toLowerCase())
+        debug('projectionTermsParam:: ', projectionTermsParam)
+        const termsFound = projectionTermsParam.filter((ptp) => ptp.term.alias.trim().toLowerCase() == alias.trim().toLowerCase())
+        debug('termsFound:: ', termsFound)
+        log('result:: ', termsFound[0])
+        return termsFound[0]
     }
 
 }
