@@ -15,7 +15,7 @@ module.exports = {
         const originalQuerySecondPart = `from ${query.split(' from ')[1]}`        
         debug('originalQuerySecondPart:: ', originalQuerySecondPart)
         
-        let newQueries = [{ sql: "select ", aggregationType: "NONE", term: "FULL", targetColumn: "NONE", distinct: false, role: "MASTER"} ]
+        let newQueries = [{ sql: "select ", aggregationType: "NONE", term: "FULL", targetColumn: { "expression": "NONE", "alias":"NONE"}, distinct: false, role: "MASTER"} ]
         
         projectionTerms.forEach(t => {
             //if the term has to consider DISTINCT values in aggregation, it should be made on a series of separated query that will:
@@ -36,7 +36,7 @@ module.exports = {
                 }
                 const derivedQuery = parseUtils.normalizeQuery(`select ${t.term.expression.replace(/[()]/g, '')} as "${t.term.alias}" ${secondPartWithoutGroupBy} ${andClauseWithGroupByTerms}`.replace(t.aggregationType.toLowerCase(), ''))
                 debug('derivedQuery', derivedQuery)
-                newQueries.push(Object.assign({}, t, { sql: derivedQuery, role: "AGGREGATION", targetColumn: queryParser.getColumnName(t.term.expression) }) )
+                newQueries.push(Object.assign({}, t, { sql: derivedQuery, role: "AGGREGATION", targetColumn: t.term }) )
                 
             }else if (t.distinct && t.aggregationType == 'NONE') {
                 throw new Error(`"DISTINCT" is only supported in aggregation functions, e.g.: select count(distinct column).`)

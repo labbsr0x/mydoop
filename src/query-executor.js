@@ -1,6 +1,7 @@
 const info = require('debug')('query-executor-info')
 const log = require('debug')('query-executor-log')
 const debug = require('debug')('query-executor-debug')
+const fine = require('debug')('query-executor-fine')
 const parseUtils = require('./parse-utils')
 const queryParser = require('./query-parser')
 
@@ -46,7 +47,7 @@ module.exports = {
                         reject(error)
                         throw error;
                     }
-                    log('results: ', sql, results);
+                    fine('results: ', sql, results);
                     resolve(results)
                 });
             })
@@ -275,7 +276,7 @@ module.exports = {
             debug('whereTerms::', whereTerms)
 
             const whereClauses = this.buildTimeDistributedWhereClause(whereTerms, distributionFactor)
-            log('whereClauses::', whereClauses)
+            debug('whereClauses::', whereClauses)
 
             let afterWhereClauseArr = sqlProjectionFilterArr[1].split(/(\s+group\s+by\s+|\s+order\s+by\s+|\s+limit\s+)/g)
             let afterWhereClause = ''
@@ -284,9 +285,9 @@ module.exports = {
                 afterWhereClause = afterWhereClauseArr.reduce((a,b) => `${a} ${b}`, '')
             }
             const queries = whereClauses.map(w => `${sqlProjectionFilterArr[0]} ${w} ${afterWhereClause}`)
-            log('==>> DISTRIBUTED QUERIES ::', queries)
+            debug('==>> DISTRIBUTED QUERIES ::', queries)
             async.map(queries, async q => {
-                log('Executing QUERY::', q)
+                fine('Executing QUERY::', q)
                 return await this.executeInDatabase(q)
             }, (err, data) => {
                 if (err) {
@@ -331,8 +332,7 @@ module.exports = {
             //
             //-- first, we run the MASTER query to get the GROUP BY column values to use in the AGGREGATION queries, derived from the original query
             const result = await this.executeDistributed(masterQuery.sql, 2)
-            return null;
-            debut('masterQueryExec-RESULT::', result)
+            debug('masterQueryExec-RESULT::', result)
             if (aggregationQueries.length==0) {
                 return resolve(result)
             }
@@ -341,38 +341,39 @@ module.exports = {
             async.map(result, async row => {
                 // -- THIS IS WHERE IN-CODE AGGREGATION HAPPENS
 
-                aggregationQueries.forEach(async aq => {
+                for (var i = 0; i < aggregationQueries.length; i++) {
                     //foreach aggregation query, replace the `-1` value placed in the original query with the actual value from the in-code aggregation
-
+                    const aq = aggregationQueries[i]
                     //merge the SQL with the current row values as parameters
-                    const mergedSQL = this.mergeSQLWithParams(aq.sql, row)                    
+                    const mergedSQL = this.mergeSQLWithParams(aq.sql, row)      //pass the row parameter to get the value to the columns that are in the `where` clause               
                     debug('mergedSQL:: ', mergedSQL)
 
-                    let aggResult = await this.executeDistributed(mergedSQL) //pass the row parameter to get the value to the columns that are in the `where` clause                
+                    let aggResult = await this.executeDistributed(mergedSQL, 4)
                     //in-code aggregation
-                    if (aq.aggregationType.toUpperCase() == 'COUNT') {                                                
-                        const cnt = aq.distinct ? [...new Set(aggResult)].length : aggResult.length
-                        debug('AGGREGATION TYPE :COUNT:', cnt)    
-                        row[aq.targetColumn] = cnt
+                    if (aq.aggregationType == 'COUNT') {
+                        const cnt = aq.distinct ? [...new Set(aggResult.map(ag => ag[aq.targetColumn.alias]))].length : aggResult.length                        
+                        row[aq.targetColumn.alias] = cnt
+                        info("!!!!!!!RESULT!!!!!!!!", aq.targetColumn)
 
-                    }else if (query.aggregationType.toUpperCase() == 'SUM') {
+                    } else if (query.aggregationType.toUpperCase() == 'SUM') {
                         const sum = aq.distinct ? [...new Set(aggResult)].reduce((a, b) => a + Object.values(b)[0], 0) : aggResult.reduce((a, b) => a + Object.values(b)[0], 0)
-                        debug('AGGREGATION TYPE :SUM:', sum)    
-                        row[aq.targetColumn] = sum
+                        debug('AGGREGATION TYPE :SUM:', sum)
+                        row[aq.targetColumn.alias] = sum
 
                     } else if (query.aggregationType.toUpperCase() == 'MAX') {
                         reject('in-code MAX Aggregation not yet supported')
-                        throw new Error('in-code MAX Aggregation not yet supported')                        
+                        throw new Error('in-code MAX Aggregation not yet supported')
                     } else if (query.aggregationType.toUpperCase() == 'MIN') {
                         reject('in-code MIN Aggregation not yet supported')
-                        throw new Error('in-code MIN Aggregation not yet supported')                        
+                        throw new Error('in-code MIN Aggregation not yet supported')
                     } else if (query.aggregationType.toUpperCase() == 'AVG') {
                         reject('in-code AVG Aggregation not yet supported')
-                        throw new Error('in-code AVG Aggregation not yet supported')                                                                        
-                    }else{
-                        row[aq.targetColumn] = -1 //the aggregation was made in the DB
+                        throw new Error('in-code AVG Aggregation not yet supported')
+                    } else {
+                        row[aq.targetColumn.alias] = -1 //the aggregation was made in the DB
                     }
-                })
+                }
+                return row
             }, (err, data) => {
                 if (err) {
                     console.error("ERROR::", err)

@@ -267,10 +267,10 @@ describe('queryExecutor', () => {
     describe('#executeComposedQueries()', () => {
         it('should execute a series of queries and merge its result', async () => {
             const queries = [{
-                sql: `select table_mock_alias.column_1 as "1",table_mock_alias.column_2 as "2",-1 as "3",count(*) as "4",sum(table_mock_alias.column_4) as "5",max(table_mock_alias.column_4) as "6",sum(table_mock_alias.column_5) as "7",sum(case table_mock_alias.column_4 when 1 then 1 when 0 then 1 else 0 end) as "8",sum(case table_mock_alias.column_6 when 1 then 1 else 0 end) as "9",-1 as "10" from table_mock as table_mock_alias where table_mock_alias.time_column_1 >= '2018-04-26 11:00:00' and table_mock_alias.time_column_1 <= '2018-04-26 23:40:00' and table_mock_alias.column_7 in ('44') group by table_mock_alias.column_1, table_mock_alias.column_2`,
+                sql: 'select table_mock_alias.column_1 as "1",table_mock_alias.column_2 as "2",-1 as "3",count(*) as "4",sum(table_mock_alias.column_4) as "5",max(table_mock_alias.column_4) as "6",sum(table_mock_alias.column_5) as "7",sum(case table_mock_alias.column_4 when 1 then 1 when 0 then 1 else 0 end) as "8",sum(case table_mock_alias.column_6 when 1 then 1 else 0 end) as "9",-1 as "10" from table_mock as table_mock_alias where table_mock_alias.time_column_1 >= \'2018-04-26 11:00:00\' and table_mock_alias.time_column_1 <= \'2018-04-26 23:40:00\' and table_mock_alias.column_7 in (\'44\') group by table_mock_alias.column_1, table_mock_alias.column_2',
                 aggregationType: 'NONE',
                 term: 'FULL',
-                targetColumn: 'NONE',
+                targetColumn: { expression: 'NONE', alias: 'NONE' },
                 distinct: false,
                 role: 'MASTER'
             },
@@ -282,9 +282,13 @@ describe('queryExecutor', () => {
                     },
                 aggregationType: 'COUNT',
                 distinct: true,
-                sql: `select distinct table_mock_alias.column_3 as "3" from table_mock as table_mock_alias where table_mock_alias.time_column_1 >= '2018-04-26 11:00:00' and table_mock_alias.time_column_1 <= '2018-04-26 23:40:00' and table_mock_alias.column_7 in ('44') and table_mock_alias.column_1={1} and table_mock_alias.column_2={2}`,
+                sql: 'select distinct table_mock_alias.column_3 as "3" from table_mock as table_mock_alias where table_mock_alias.time_column_1 >= \'2018-04-26 11:00:00\' and table_mock_alias.time_column_1 <= \'2018-04-26 23:40:00\' and table_mock_alias.column_7 in (\'44\') and table_mock_alias.column_1={1} and table_mock_alias.column_2={2}',
                 role: 'AGGREGATION',
-                targetColumn: 'table_mock_alias.column_3'
+                targetColumn:
+                    {
+                        expression: 'count(distinct table_mock_alias.column_3)',
+                        alias: '3'
+                    }
             },
             {
                 term:
@@ -294,9 +298,13 @@ describe('queryExecutor', () => {
                     },
                 aggregationType: 'COUNT',
                 distinct: true,
-                sql: `select distinct table_mock_alias.column_8 as "10" from table_mock as table_mock_alias where table_mock_alias.time_column_1 >= '2018-04-26 11:00:00' and table_mock_alias.time_column_1 <= '2018-04-26 23:40:00' and table_mock_alias.column_7 in ('44') and table_mock_alias.column_1={1} and table_mock_alias.column_2={2}`,
+                sql: 'select distinct table_mock_alias.column_8 as "10" from table_mock as table_mock_alias where table_mock_alias.time_column_1 >= \'2018-04-26 11:00:00\' and table_mock_alias.time_column_1 <= \'2018-04-26 23:40:00\' and table_mock_alias.column_7 in (\'44\') and table_mock_alias.column_1={1} and table_mock_alias.column_2={2}',
                 role: 'AGGREGATION',
-                targetColumn: 'table_mock_alias.column_8'
+                targetColumn:
+                    {
+                        expression: 'count(distinct table_mock_alias.column_8)',
+                        alias: '10'
+                    }
             }]
             
             const result = queryExecutor.executeComposedQueries(queries)
