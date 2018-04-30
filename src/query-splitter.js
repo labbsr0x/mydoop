@@ -5,22 +5,27 @@ const queryParser = require('./query-parser')
 
 module.exports = {
 
-    separateQueriesByDistinct: (query) => {
-        query = parseUtils.normalizeQuery(query)
-        debug('normalized-query::', query)
+    /**
+     * Takes
+     * 
+     * @param query
+     */
+    separateQueriesByDistinct: (sql) => {
+        sql = parseUtils.normalizeQuery(sql)
+        debug('normalized-sql::', sql)
 
-        const projectionTerms = queryParser.getProjectionTerms(query)
+        const projectionTerms = queryParser.getProjectionTerms(sql)
         debug('projectionTerms:: ', projectionTerms)
 
-        const originalQuerySecondPart = `from ${query.split(' from ')[1]}`        
+        const originalQuerySecondPart = `from ${sql.split(' from ')[1]}`        
         debug('originalQuerySecondPart:: ', originalQuerySecondPart)
         
         let newQueries = [{ sql: "select ", aggregationType: "NONE", term: "FULL", targetColumn: { "expression": "NONE", "alias":"NONE"}, distinct: false, role: "MASTER"} ]
         
         projectionTerms.forEach(t => {
-            //if the term has to consider DISTINCT values in aggregation, it should be made on a series of separated query that will:
+            //if the term has to consider DISTINCT values in aggregation, it should be made on a series of separated sql that will:
             // -- retrieve the distinct values of the GROUP BY columns + the aggregated column
-            // -- for each of those distinct values, it will have a query (can be parallelized) to fetch the distinct values and them count in memory
+            // -- for each of those distinct values, it will have a sql (can be parallelized) to fetch the distinct values and them count in memory
             if (t.distinct && t.aggregationType != 'NONE') { 
                 newQueries[0].sql += `-1 as "${t.term.alias}",` //temporary -1 to be replaced when the derived aggregation finishes
 
