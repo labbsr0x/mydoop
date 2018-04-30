@@ -307,7 +307,19 @@ describe('queryExecutor', () => {
                     }
             }]
             
-            const result = queryExecutor.executeComposedQueries(queries)
+            const result = await queryExecutor.executeComposedQueries(queries)
+            assert.equal(result[0]['1'], 'COL--1')
+            assert.equal(result[0]['3'], 3)
+            assert.equal(result[0]['5'], 268)
+            assert.equal(result[0]['10'], 2)
+            assert.equal(result[1]['1'], 'COL--111')
+            assert.equal(result[1]['3'], 1)
+            assert.equal(result[1]['5'], 22)
+            assert.equal(result[1]['10'], 1)
+            assert.equal(result[2]['1'], 'COL--11')
+            assert.equal(result[2]['3'], 1)
+            assert.equal(result[2]['5'], 222)
+            assert.equal(result[2]['10'], 1)
         })        
     })
 });

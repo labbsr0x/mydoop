@@ -340,39 +340,51 @@ module.exports = {
             //-- with the result of the MASTER query, we will execute the AGGREGATION queries to compose the final resultset
             async.map(result, async row => {
                 // -- THIS IS WHERE IN-CODE AGGREGATION HAPPENS
+                
+                const modifiedRow = await new Promise((resolve, reject) => {
+                    async.map(aggregationQueries, async aq => {
+                        
+                        //merge the SQL with the current row values as parameters
+                        const mergedSQL = this.mergeSQLWithParams(aq.sql, row)      //pass the row parameter to get the value to the columns that are in the `where` clause               
+                        debug('mergedSQL:: ', mergedSQL)
 
-                for (var i = 0; i < aggregationQueries.length; i++) {
-                    //foreach aggregation query, replace the `-1` value placed in the original query with the actual value from the in-code aggregation
-                    const aq = aggregationQueries[i]
-                    //merge the SQL with the current row values as parameters
-                    const mergedSQL = this.mergeSQLWithParams(aq.sql, row)      //pass the row parameter to get the value to the columns that are in the `where` clause               
-                    debug('mergedSQL:: ', mergedSQL)
+                        let aggResult = await this.executeDistributed(mergedSQL, 4)
+                        //in-code aggregation
+                        if (aq.aggregationType == 'COUNT') {
+                            const cnt = aq.distinct ? [...new Set(aggResult.map(ag => ag[aq.targetColumn.alias]))].length : aggResult.length
+                            row[aq.targetColumn.alias] = cnt
 
-                    let aggResult = await this.executeDistributed(mergedSQL, 4)
-                    //in-code aggregation
-                    if (aq.aggregationType == 'COUNT') {
-                        const cnt = aq.distinct ? [...new Set(aggResult.map(ag => ag[aq.targetColumn.alias]))].length : aggResult.length                        
-                        row[aq.targetColumn.alias] = cnt
+                        } else if (query.aggregationType.toUpperCase() == 'SUM') {
+                            const sum = aq.distinct ? [...new Set(aggResult)].reduce((a, b) => a + Object.values(b)[0], 0) : aggResult.reduce((a, b) => a + Object.values(b)[0], 0)
+                            debug('AGGREGATION TYPE :SUM:', sum)
+                            row[aq.targetColumn.alias] = sum
 
-                    } else if (query.aggregationType.toUpperCase() == 'SUM') {
-                        const sum = aq.distinct ? [...new Set(aggResult)].reduce((a, b) => a + Object.values(b)[0], 0) : aggResult.reduce((a, b) => a + Object.values(b)[0], 0)
-                        debug('AGGREGATION TYPE :SUM:', sum)
-                        row[aq.targetColumn.alias] = sum
+                        } else if (query.aggregationType.toUpperCase() == 'MAX') {
+                            reject('in-code MAX Aggregation not yet supported')
+                            throw new Error('in-code MAX Aggregation not yet supported')
+                        } else if (query.aggregationType.toUpperCase() == 'MIN') {
+                            reject('in-code MIN Aggregation not yet supported')
+                            throw new Error('in-code MIN Aggregation not yet supported')
+                        } else if (query.aggregationType.toUpperCase() == 'AVG') {
+                            reject('in-code AVG Aggregation not yet supported')
+                            throw new Error('in-code AVG Aggregation not yet supported')
+                        } else {
+                            row[aq.targetColumn.alias] = -1 //the aggregation was made in the DB
+                        }
+                        return row
+                    }, (err, data) => {
+                        if (err) {
+                            console.error("ERROR::", err)
+                            reject(err)
+                        }
 
-                    } else if (query.aggregationType.toUpperCase() == 'MAX') {
-                        reject('in-code MAX Aggregation not yet supported')
-                        throw new Error('in-code MAX Aggregation not yet supported')
-                    } else if (query.aggregationType.toUpperCase() == 'MIN') {
-                        reject('in-code MIN Aggregation not yet supported')
-                        throw new Error('in-code MIN Aggregation not yet supported')
-                    } else if (query.aggregationType.toUpperCase() == 'AVG') {
-                        reject('in-code AVG Aggregation not yet supported')
-                        throw new Error('in-code AVG Aggregation not yet supported')
-                    } else {
-                        row[aq.targetColumn.alias] = -1 //the aggregation was made in the DB
-                    }
-                }
-                return row
+                        info('> executeComposedQueries[RESOLVE()]::> ', data)
+                        resolve(row)
+                    }) 
+
+                })
+                return modifiedRow
+
             }, (err, data) => {
                 if (err) {
                     console.error("ERROR::", err)
@@ -380,7 +392,7 @@ module.exports = {
                 }
 
                 info('> executeComposedQueries[RESOLVE()]::> ', data)
-                resolve(res)
+                resolve(data)
             })
 
         })
