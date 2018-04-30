@@ -107,13 +107,19 @@ describe('queryExecutor', () => {
                 leftTerm: 'table_mock_alias.column_2',
                 operator: '=',
                 rightTerm: `'COL--2'`
+            },
+            { connector: 'and' },
+            {
+                leftTerm: 'table_mock_alias.column_2',
+                operator: '!=',
+                rightTerm: `''`
             }]
             const whereClauses = queryExecutor.buildTimeDistributedWhereClause(arrTerms, 4)
             assert.equal(whereClauses.length, 4)
-            assert.equal(whereClauses[0], `where table_mock_alias.time_column_1 >= '2018-04-26 11:00:00' and table_mock_alias.time_column_1 <= '2018-04-26 11:09:59' and table_mock_alias.column_7 in ('44') and table_mock_alias.column_1 = 'COL--1' and table_mock_alias.column_2 = 'COL--2'`)
-            assert.equal(whereClauses[1], `where table_mock_alias.time_column_1 >= '2018-04-26 11:10:00' and table_mock_alias.time_column_1 <= '2018-04-26 11:19:59' and table_mock_alias.column_7 in ('44') and table_mock_alias.column_1 = 'COL--1' and table_mock_alias.column_2 = 'COL--2'`)
-            assert.equal(whereClauses[2], `where table_mock_alias.time_column_1 >= '2018-04-26 11:20:00' and table_mock_alias.time_column_1 <= '2018-04-26 11:29:59' and table_mock_alias.column_7 in ('44') and table_mock_alias.column_1 = 'COL--1' and table_mock_alias.column_2 = 'COL--2'`)
-            assert.equal(whereClauses[3], `where table_mock_alias.time_column_1 >= '2018-04-26 11:30:00' and table_mock_alias.time_column_1 <= '2018-04-26 11:40:00' and table_mock_alias.column_7 in ('44') and table_mock_alias.column_1 = 'COL--1' and table_mock_alias.column_2 = 'COL--2'`)            
+            assert.equal(whereClauses[0], `where table_mock_alias.time_column_1 >= '2018-04-26 11:00:00' and table_mock_alias.time_column_1 <= '2018-04-26 11:09:59' and table_mock_alias.column_7 in ('44') and table_mock_alias.column_1 = 'COL--1' and table_mock_alias.column_2 = 'COL--2' and table_mock_alias.column_2 != ''`)
+            assert.equal(whereClauses[1], `where table_mock_alias.time_column_1 >= '2018-04-26 11:10:00' and table_mock_alias.time_column_1 <= '2018-04-26 11:19:59' and table_mock_alias.column_7 in ('44') and table_mock_alias.column_1 = 'COL--1' and table_mock_alias.column_2 = 'COL--2' and table_mock_alias.column_2 != ''`)
+            assert.equal(whereClauses[2], `where table_mock_alias.time_column_1 >= '2018-04-26 11:20:00' and table_mock_alias.time_column_1 <= '2018-04-26 11:29:59' and table_mock_alias.column_7 in ('44') and table_mock_alias.column_1 = 'COL--1' and table_mock_alias.column_2 = 'COL--2' and table_mock_alias.column_2 != ''`)
+            assert.equal(whereClauses[3], `where table_mock_alias.time_column_1 >= '2018-04-26 11:30:00' and table_mock_alias.time_column_1 <= '2018-04-26 11:40:00' and table_mock_alias.column_7 in ('44') and table_mock_alias.column_1 = 'COL--1' and table_mock_alias.column_2 = 'COL--2' and table_mock_alias.column_2 != ''`)            
         })
     })
 

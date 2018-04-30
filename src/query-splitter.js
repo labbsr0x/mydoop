@@ -6,9 +6,10 @@ const queryParser = require('./query-parser')
 module.exports = {
 
     /**
-     * Takes
+     * Takes a SQL, analyzes its projections terms ans segregate the terms that has `aggregation` function using `distinct`
+     * keywork into separated queries
      * 
-     * @param query
+     * @param sql Query that will have its distinct aggregation terms run separatedely
      */
     separateQueriesByDistinct: (sql) => {
         sql = parseUtils.normalizeQuery(sql)
@@ -31,15 +32,16 @@ module.exports = {
 
                 let secondPartGroupByArr = originalQuerySecondPart.split(' group by ')
                 let secondPartWithoutGroupBy = secondPartGroupByArr[0]
-                let andClauseWithGroupByTerms = ''
+                let andClauseWithoutGroupByTerms = ''
                 if (secondPartGroupByArr[1]) { //identify the GROUP BY terms that will be distinct fetch separately to have the aggregation made in code
-                    andClauseWithGroupByTerms = secondPartGroupByArr[1].split(' order by ')[0]
+                    andClauseWithoutGroupByTerms = secondPartGroupByArr[1].split(' order by ')[0]
+                                            .split(' group by ')[0] 
                                             .split(' limit ')[0]
                                             .split(' having ')[0]
                                             .split(',')
                                             .reduce((a, b, idx) => a + ` and ${b.trim()}={${queryParser.getAliasByColumnExpression(b, projectionTerms)}}`, '')                                            
                 }
-                const derivedQuery = parseUtils.normalizeQuery(`select ${t.term.expression.replace(/[()]/g, '')} as "${t.term.alias}" ${secondPartWithoutGroupBy} ${andClauseWithGroupByTerms}`.replace(t.aggregationType.toLowerCase(), ''))
+                const derivedQuery = parseUtils.normalizeQuery(`select ${t.term.expression.replace(/[()]/g, '')} as "${t.term.alias}" ${secondPartWithoutGroupBy} ${andClauseWithoutGroupByTerms}`.replace(t.aggregationType.toLowerCase(), ''))
                 debug('derivedQuery', derivedQuery)
                 newQueries.push(Object.assign({}, t, { sql: derivedQuery, role: "AGGREGATION", targetColumn: t.term }) )
                 

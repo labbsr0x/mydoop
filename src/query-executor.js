@@ -1,6 +1,8 @@
+const logger = require('debug')
 const info = require('debug')('query-executor-info')
 const log = require('debug')('query-executor-log')
 const debug = require('debug')('query-executor-debug')
+const timer = require('debug')('query-executor-timer')
 const fine = require('debug')('query-executor-fine')
 const parseUtils = require('./parse-utils')
 const queryParser = require('./query-parser')
@@ -17,6 +19,7 @@ module.exports = {
      * @returns Array [] with the resultset from database
      */
     executeInDatabase: function (sql) {
+        fine('{{{{{===>>executeInDatabase')
         debug('query::', sql)
 
         const mysqlHost = process.env.MYSQL_HOST || '172.20.54.11'
@@ -32,7 +35,6 @@ module.exports = {
             password: mysqlPassword,
             database: mysqlDatabase
         });
-
         return new Promise((resolve, reject) => {
 
             connection.connect((err, args) => {
@@ -47,7 +49,7 @@ module.exports = {
                         reject(error)
                         throw error;
                     }
-                    fine('results: ', sql, results);
+                    fine('}}}}results: ', sql, results);
                     resolve(results)
                 });
             })
@@ -89,8 +91,10 @@ module.exports = {
      */
     buildTimeDistributedWhereClause: function (arrTerms, distributionFactor) {
         debug('arrTerms:::', arrTerms)
+
+        arrTerms = arrTerms.filter(t => Object.keys(t).length>0)
         if (!distributionFactor) {
-            distributionFactor = 48
+            distributionFactor = 1
         }
         const timedTerms = arrTerms.filter(t => t.rightTerm && !!t.rightTerm.match(/('\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}')/g))
                                     .reduce((acc, term) => {
@@ -132,7 +136,8 @@ module.exports = {
         baseWHERE += arrTerms.reduce((str, term) => {
 
             if (term.connector) { //"and" "or"
-                return str += ` ${term.connector} `
+                str += ` ${term.connector} `
+                return str
             }
 
             let comparasionValue = term.rightTerm
@@ -234,7 +239,7 @@ module.exports = {
     executeDistributed: function(sql, distributionFactor) {
         info('> executeDistributed(sql, distributionFactor)::> ', sql, distributionFactor)
         if (!distributionFactor) {
-            distributionFactor = 12
+            distributionFactor = 1
         }
         const projectionTerms = queryParser.getProjectionTerms(sql)
         debug('projectionTerms', projectionTerms)
@@ -253,32 +258,34 @@ module.exports = {
                                     .split(' group by ')[0]
                                     .split(' limit ')[0]
                                     .split(' having ')[0]
-                                    .split(/(\('[^'|\\']*'\)\s*|'[^'|\\']*'\s*|>=\s*|<=\s*|>\s*|<\s*|<>\s*|=\s*|and\s*|or\s*|between\s*|like\s*|in\s*)/g)
+                                    .split(/(\('[^'|\\']*'\)\s*|'[^'|\\']*'\s*|>=\s*|<=\s*|>\s*|<\s*|<>\s*|!=\s*|=\s*|and\s*|or\s*|between\s*|like\s*|in\s*)/g)
                                     
             debug('sqlWhereTokensArr-just-where::', sqlWhereTokensArr)                                    
 
+            sqlWhereTokensArr = sqlWhereTokensArr.filter(s => !!s) //remove empty terms
             const whereTerms = sqlWhereTokensArr.reduce((a,b) => {
                 if (b.trim() == '') return a
-
+                
                 if(parseUtils.isKeyWord(b)){
                     a.push({connector: b.trim()})
                     a.push({})
                 }else if(parseUtils.isOperator(b)) {
-                    a[a.length - 1].operator = b.trim()
+                    a[a.length - 1].operator = b.trim()                    
+                    
                 }else if (a[a.length-1].leftTerm) {
                     a[a.length - 1].rightTerm = b.trim()
+
                 }else{
                     a[a.length - 1].leftTerm = b.trim()
-                }            
+                }    
                 return a
             }, [{}])      
             
             debug('whereTerms::', whereTerms)
-
             const whereClauses = this.buildTimeDistributedWhereClause(whereTerms, distributionFactor)
             debug('whereClauses::', whereClauses)
 
-            let afterWhereClauseArr = sqlProjectionFilterArr[1].split(/(\s+group\s+by\s+|\s+order\s+by\s+|\s+limit\s+)/g)
+            let afterWhereClauseArr = sqlProjectionFilterArr[1].split(/(\s+group\s+by\s+|\s+order\s+by\s+|\s+limit\s+)/g)            
             let afterWhereClause = ''
             if (afterWhereClauseArr.length > 1) {
                 afterWhereClauseArr = afterWhereClauseArr.splice(1, afterWhereClauseArr.length-1)
@@ -316,6 +323,7 @@ module.exports = {
      * @returns Array [] with the result of the queries 
      */
     executeComposedQueries: async function(queries) {
+        timer('{{{{{===>>', queries.length)
         info('> executeComposedQueries::', queries)
         
         return new Promise(async (resolve, reject) => {
@@ -331,9 +339,11 @@ module.exports = {
             
             //
             //-- first, we run the MASTER query to get the GROUP BY column values to use in the AGGREGATION queries, derived from the original query
-            const result = await this.executeDistributed(masterQuery.sql, 2)
-            debug('masterQueryExec-RESULT::', result)
+            const result = await this.executeDistributed(masterQuery.sql, 36)
+            debug('masterQueryExec-RESULT::', aggregationQueries.length)
             if (aggregationQueries.length==0) {
+                timer('}}}}}}===>>', result.length)
+                info('> executeComposedQueries[RESOLVE()]::> ', result)
                 return resolve(result)
             }
 
@@ -348,7 +358,7 @@ module.exports = {
                         const mergedSQL = this.mergeSQLWithParams(aq.sql, row)      //pass the row parameter to get the value to the columns that are in the `where` clause               
                         debug('mergedSQL:: ', mergedSQL)
 
-                        let aggResult = await this.executeDistributed(mergedSQL, 4)
+                        let aggResult = await this.executeDistributed(mergedSQL, 2)
                         //in-code aggregation
                         if (aq.aggregationType == 'COUNT') {
                             const cnt = aq.distinct ? [...new Set(aggResult.map(ag => ag[aq.targetColumn.alias]))].length : aggResult.length
@@ -392,6 +402,7 @@ module.exports = {
                 }
 
                 info('> executeComposedQueries[RESOLVE()]::> ', data)
+                timer('}}}}}}===>>', data.length)
                 resolve(data)
             })
 

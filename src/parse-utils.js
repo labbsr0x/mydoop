@@ -4,15 +4,15 @@ const debug = require('debug')('parse-utils-debug')
 module.exports = {
 
     isKeyWord: function(str) {
-        return !!str.match(/(and\s*|or\s*)/g)
+        return !!str.trim().match(/(^and|or$)/g)
     },
 
     isOperator: function (str) {
-        return !!str.match(/(>=\s*|<=\s*|>\s*|<\s*|<>\s*|=\s*|!=\s*|between\s*|like\s*|in\s*)/g)
+        return !!str.trim().match(/(^>=|<=|>|<|<>|=|!=|between|like|in$)/g)
     },
 
     normalizeQuery: function(query) {
-        return query.replace(/\s\s+/g, ' ').replace(/\n/g, '').toLowerCase().trim()
+        return query.replace(/\s\s+/g, ' ').replace(/\n/g, ' ').toLowerCase().trim()
     },
     /**
      * Extract all the terms from projection and returns it as an array
