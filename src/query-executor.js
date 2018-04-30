@@ -353,7 +353,6 @@ module.exports = {
                     if (aq.aggregationType == 'COUNT') {
                         const cnt = aq.distinct ? [...new Set(aggResult.map(ag => ag[aq.targetColumn.alias]))].length : aggResult.length                        
                         row[aq.targetColumn.alias] = cnt
-                        info("!!!!!!!RESULT!!!!!!!!", aq.targetColumn)
 
                     } else if (query.aggregationType.toUpperCase() == 'SUM') {
                         const sum = aq.distinct ? [...new Set(aggResult)].reduce((a, b) => a + Object.values(b)[0], 0) : aggResult.reduce((a, b) => a + Object.values(b)[0], 0)
